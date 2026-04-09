@@ -6,7 +6,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 
-// DYNAMIC URL: Uses your live API if on Vercel, or Localhost if on your PC
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://localhost:7170"; 
 const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=800&q=80";
 
@@ -16,7 +15,6 @@ const smoothEase = [0.22, 1, 0.36, 1];
 const containerVariants = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.08, ease: smoothEase } } };
 const cardVariants = { hidden: { opacity: 0, y: 30, scale: 0.95 }, show: { opacity: 1, y: 0, scale: 1, transition: { type: "spring", bounce: 0.2, duration: 0.8 } }, exit: { opacity: 0, scale: 0.95, transition: { duration: 0.3, ease: smoothEase } } };
 
-// SAFTEY HELPER: This ensures we get the ID no matter how MongoDB/C# formats it
 const getItemId = (item) => item.itemID || item.itemId || item.id || item._id;
 
 export default function CatalogMenu() {
@@ -25,21 +23,17 @@ export default function CatalogMenu() {
   const [cart, setCart] = useState([]);
   const [sessionData, setSessionData] = useState({ table: "Unknown", name: "Guest", email: "" });
   const [selectedCategory, setSelectedCategory] = useState("All");
+  
+  // NEW: State to hold the success modal data!
+  const [successModalData, setSuccessModalData] = useState(null);
 
   useEffect(() => {
     const savedData = localStorage.getItem('sessionData');
     if (savedData) setSessionData(JSON.parse(savedData));
 
-    // Fetch the menu and log it so we can debug if it's empty!
     fetch(`${API_BASE_URL}/api/Menu`)
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-        return res.json();
-      })
-      .then((data) => {
-        console.log("📡 Menu Data Received from C#:", data); // Check browser console!
-        setMenuItems(data);
-      })
+      .then((res) => res.json())
+      .then((data) => setMenuItems(data))
       .catch((err) => {
         console.error("❌ Failed to load menu:", err);
         toast.error("Failed to load menu from server.");
@@ -79,7 +73,6 @@ export default function CatalogMenu() {
       tableID: parseInt(sessionData.table),
       customerName: sessionData.name,
       customerEmail: sessionData.email,
-      // Uses the safe ID helper here
       orderItems: cart.map(item => ({ itemID: getItemId(item), quantity: 1 }))
     };
 
@@ -98,9 +91,14 @@ export default function CatalogMenu() {
           items: cart, total: cartTotal, date: new Date().toLocaleString()
         }));
 
-        toast.success("Order sent to kitchen!");
         setCart([]); 
-        router.push(`/track/${newOrderId}`);
+        
+        // MODIFIED: Show our custom modal instead of instantly redirecting
+        setSuccessModalData({
+          orderId: newOrderId,
+          table: sessionData.table
+        });
+        
       } else {
         toast.error("Failed to place order.");
       }
@@ -202,6 +200,62 @@ export default function CatalogMenu() {
           </div>
         </div>
       </main>
+
+      {/* ==========================================
+          SUCCESS MODAL UI (Matches your screenshot)
+          ========================================== */}
+      <AnimatePresence>
+        {successModalData && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              className="bg-[#1A1A1A] border border-zinc-800 p-8 rounded-2xl shadow-2xl max-w-sm w-full text-center relative"
+            >
+              {/* Green Circle Checkmark */}
+              <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                <div className="w-14 h-14 bg-green-500 rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(34,197,94,0.5)]">
+                  <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+              </div>
+
+              <h2 className="text-2xl font-bold text-white mb-2">Success</h2>
+              <p className="text-zinc-400 text-sm mb-8">Your order has been placed successfully.</p>
+              
+              {/* Order Details Box */}
+              <div className="bg-[#242424] border border-zinc-700/50 rounded-xl p-5 mb-8 text-left">
+                <h3 className="text-white font-bold mb-4 border-b border-zinc-700 pb-2">Order Details</h3>
+                
+                <div className="flex justify-between items-center text-sm mb-3">
+                  <span className="text-zinc-400">Order ID:</span>
+                  <span className="text-amber-500 font-mono font-bold text-base">
+                    #{(successModalData.orderId || "000000").slice(-6).toUpperCase()}
+                  </span>
+                </div>
+                
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-zinc-400">Table Number:</span>
+                  <span className="text-white font-bold text-base">{successModalData.table}</span>
+                </div>
+              </div>
+
+              <button
+                onClick={() => router.push(`/track/${successModalData.orderId}`)}
+                className="w-full bg-amber-500 hover:bg-amber-400 text-black font-bold py-4 rounded-xl uppercase tracking-widest transition-colors shadow-lg"
+              >
+                Track Order
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 }
