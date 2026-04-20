@@ -141,7 +141,7 @@ export default function HistoryPage() {
           </motion.div>
           
           <motion.div variants={fadeInUp} className="h-[400px] rounded-3xl overflow-hidden relative group">
-            <img src="https://unsplash.com/photos/cropped-photo-of-a-male-sommelier-in-a-brown-apron-standing-in-the-cellar-and-pouring-wine-into-a-glass-2rnNYFnu47A" alt="Wine Pour" className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" />
+            <img src="https://unsplash.com/photos/liquor-pours-in-wine-glass-PPneSBqfCCU" alt="Wine Pour" className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" />
             <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors duration-500"></div>
           </motion.div>
 
